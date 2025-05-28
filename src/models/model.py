@@ -9,6 +9,15 @@ class Model(Layer):
         self.optimizer = None
         self.loss_fn = None
 
+    @property
+    def _params(self):
+        all_params = {}
+        for i, layer in enumerate(self.layers):
+            if hasattr(layer, "params"):
+                for k, v in layer.params.items():
+                    all_params[f"{layer.name}.{k}"] = v
+        return all_params
+
     def compile(self, optimizer, loss):
         self.optimizer = get_optimizer(optimizer)
         self.loss_fn = get_loss(loss)
