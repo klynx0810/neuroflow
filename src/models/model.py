@@ -25,27 +25,30 @@ class Model(Layer):
 
     def fit(self, X, y, epochs=1):
         for epoch in range(epochs):
-            #Forward
+            # 1. Forward
             y_pred = self.call(X)
 
-            #Compute loss
+            # 2. Loss
             loss = self.loss_fn(y_pred, y)
 
-            #Compute gradient w.r.t output (dL/dy_pred)
-            grad_output = 2 * (y_pred - y) / y.shape[0]  # đạo hàm MSE
+            # 3. Đạo hàm của loss theo y_pred
+            if hasattr(self.loss_fn, "backward"):
+                grad_output = self.loss_fn.backward(y_pred, y)
+            else:
+                raise NotImplementedError("Loss function phải có backward()")
 
-            #Backward pass qua từng layer (ngược lại)
+            # 4. Truyền ngược
             for layer in reversed(self.layers):
-                if hasattr(layer, 'backward'):
+                if hasattr(layer, "backward"):
                     grad_output = layer.backward(grad_output)
 
-            #Update parameters
+            # 5. Cập nhật trọng số qua optimizer
             for layer in self.layers:
-                if hasattr(layer, 'params') and hasattr(layer, 'grads'):
-                    if self.optimizer:
-                        self.optimizer.step(layer.params, layer.grads)
+                if hasattr(layer, "params") and hasattr(layer, "grads"):
+                    self.optimizer.step(layer.params, layer.grads)
 
             print(f"Epoch {epoch+1}/{epochs} - Loss: {loss:.4f}")
+
 
     def predict(self, X):
         return self.call(X)
