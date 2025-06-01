@@ -66,6 +66,8 @@ class Conv2D(Layer):
 
         if self.activation:
             output = self.activation.forward(out)
+        else:
+            output = out
 
         return output
 
