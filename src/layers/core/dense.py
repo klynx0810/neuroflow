@@ -4,18 +4,31 @@ from ....registry import get_activation
 
 class Dense(Layer):
     def __init__(self, units, input_dim=None, activation=None, name=None):
+        """
+        units: số lượng node ở layer này (số chiều output)
+        input_dim: số chiều của input vector (nếu biết trước)
+        activation: tên hàm kích hoạt (vd: 'relu', 'tanh', ...)
+        name: tên lớp (tuỳ chọn)
+        """
         super().__init__(name=name)
         self.units = units
         self.input_dim = input_dim
         self.activation: Layer = get_activation(activation) if activation else None
 
     def build(self, input_shape):
+        """
+        input_shape: tuple, thường là (batch_size, input_dim)
+        """
         input_dim = self.input_dim or input_shape[-1]
         self.params["W"] = np.random.randn(input_dim, self.units) * 0.01
         self.params["b"] = np.zeros((self.units,))
         self.built = True
 
     def forward(self, x):
+        """
+        x: đầu vào có shape (batch_size, input_dim)
+        Trả về: output shape (batch_size, units)
+        """
         if not self.built:
             self.build(x.shape)
         self.last_input = x
@@ -31,6 +44,7 @@ class Dense(Layer):
     def backward(self, grad_output):
         """
         grad_output: gradient từ layer phía sau (shape: [batch_size, units])
+        Trả về: grad_input (shape: [batch_size, input_dim])
         """
         W = self.params["W"]
         x = self.last_input

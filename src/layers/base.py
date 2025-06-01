@@ -1,5 +1,9 @@
 class Layer:
     def __init__(self, name=None, trainable=True) -> None:
+        """
+        name: tên lớp (nếu không truyền thì tự động lấy tên class viết thường)
+        trainable: lớp có tham số cần học (W, b) hay không
+        """
         self.name = name or self.__class__.__name__.lower()
         self.trainable = trainable
         self.built = False
@@ -7,7 +11,11 @@ class Layer:
         self.grads = {}
 
     def build(self, input_shape):
-        self.build()
+        """
+        Mặc định không làm gì. Các lớp con override build(input_shape)
+        để khởi tạo W, b dựa trên shape của input.
+        """
+        pass
 
     def forward(self, x):
         """Tính toán đầu ra từ đầu vào"""

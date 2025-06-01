@@ -11,6 +11,10 @@ class Model(Layer):
 
     @property
     def _params(self):
+        """
+        Trả về tất cả params của các lớp con dưới dạng dict flatten
+        Ví dụ: {dense.w: ..., dense.b: ..., conv2d.w: ...}
+        """
         all_params = {}
         for i, layer in enumerate(self.layers):
             if hasattr(layer, "params"):
@@ -19,6 +23,9 @@ class Model(Layer):
         return all_params
 
     def compile(self, optimizer, loss):
+        """
+        Thiết lập loss function và optimizer từ string hoặc callable
+        """
         self.optimizer = get_optimizer(optimizer)
         self.loss_fn = get_loss(loss)
 
@@ -63,6 +70,9 @@ class Model(Layer):
         return self.call(X)
 
     def evaluate(self, X, y):
+        """
+        Tính loss trên tập test/validation
+        """
         preds = self.call(X)
         loss = self.loss_fn(preds, y)
         print(f"Evaluation Loss: {loss:.4f}")

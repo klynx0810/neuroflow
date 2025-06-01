@@ -5,6 +5,14 @@ from ....registry import get_activation
 
 class Conv2D(Layer):
     def __init__(self, filters, kernel_size, stride=1, padding=0, input_shape=None, activation=None, name=None):
+        """
+        filters: số lượng filter (số output channels)
+        kernel_size: kích thước của mỗi filter (int hoặc tuple)
+        stride: bước trượt (default = 1)
+        padding: padding (số pixel đệm vào mỗi phía, default = 0)
+        input_shape: tuple (h, w, c) nếu biết trước
+        activation: tên hàm kích hoạt (vd: 'relu')
+        """
         super().__init__(name=name)
         self.filters = filters
         self.kernel_size = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
@@ -16,6 +24,9 @@ class Conv2D(Layer):
         self.activation: Layer = get_activation(activation) if activation else None
 
     def build(self, input_shape):
+        """
+        input_shape: (batch_size, height, width, channels)
+        """
         self.batch_size, in_h, in_w, in_c = input_shape
         kh, kw = self.kernel_size
         # khởi tạo W: (filters, kh, kw, in_c), mỗi filter dùng cho mọi kênh
@@ -25,6 +36,9 @@ class Conv2D(Layer):
         self.built = True
 
     def conv2d_single_channel(self, A, W, bias, stride, pad):
+        """
+        Hàm hỗ trợ: Tính tích chập cho 1 ảnh 2D và 1 filter 2D
+        """
         n_H_old, n_W_old = A.shape
         f, _ = W.shape
         A_pad = np.pad(A, pad_width=pad, mode='constant', constant_values=0)
@@ -41,6 +55,10 @@ class Conv2D(Layer):
         return out
 
     def forward(self, x: np.ndarray):
+        """
+        x: input đầu vào, shape (batch_size, height, width, channels)
+        Trả về: output shape (batch_size, out_h, out_w, filters)
+        """
         if not self.built:
             self.build(x.shape)
 
@@ -72,6 +90,10 @@ class Conv2D(Layer):
         return output
 
     def backward(self, grad_output: np.ndarray):
+        """
+        grad_output: gradient từ layer sau, shape (batch_size, out_h, out_w, filters)
+        Trả về: grad_input truyền ngược lại (same shape as input)
+        """
         # raise NotImplementedError("Chưa triển khai Conv2D.backward")
         B, H, W, C = self.last_input.shape
         F, kh, kw, _ = self.params["W"].shape
