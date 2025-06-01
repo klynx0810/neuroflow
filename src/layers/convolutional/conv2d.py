@@ -1,9 +1,10 @@
 import numpy as np
 from neuroflow.src.layers.base import Layer
 from typing import Dict
+from ....registry import get_activation
 
 class Conv2D(Layer):
-    def __init__(self, filters, kernel_size, stride=1, padding=0, input_shape=None, name=None):
+    def __init__(self, filters, kernel_size, stride=1, padding=0, input_shape=None, activation=None, name=None):
         super().__init__(name=name)
         self.filters = filters
         self.kernel_size = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
@@ -12,6 +13,7 @@ class Conv2D(Layer):
         self.input_shape = input_shape  
         self.last_input: np.ndarray = None
         self.params: Dict[str, np.ndarray] = {}
+        self.activation: Layer = get_activation(activation) if activation else None
 
     def build(self, input_shape):
         self.batch_size, in_h, in_w, in_c = input_shape
@@ -61,7 +63,11 @@ class Conv2D(Layer):
                     out_channel += self.conv2d_single_channel(A, Wf, 0, stride, pad)
                 out_channel += self.params["b"][f]
                 out[b, :, :, f] = out_channel
-        return out
+
+        if self.activation:
+            output = self.activation.forward(out)
+
+        return output
 
     def backward(self, grad_output: np.ndarray):
         # raise NotImplementedError("Chưa triển khai Conv2D.backward")

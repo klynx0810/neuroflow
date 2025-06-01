@@ -1,11 +1,13 @@
 import numpy as np
 from ..base import Layer
+from ....registry import get_activation
 
 class Dense(Layer):
-    def __init__(self, units, input_dim=None, name=None):
+    def __init__(self, units, input_dim=None, activation=None, name=None):
         super().__init__(name=name)
         self.units = units
         self.input_dim = input_dim
+        self.activation: Layer = get_activation(activation) if activation else None
 
     def build(self, input_shape):
         input_dim = self.input_dim or input_shape[-1]
@@ -19,7 +21,12 @@ class Dense(Layer):
         self.last_input = x
         W = self.params["W"]
         b = self.params["b"]
-        return x @ W + b
+        
+        output = x @ W + b
+        if self.activation:
+            output = self.activation.forward(output)
+
+        return output
     
     def backward(self, grad_output):
         """
