@@ -1,5 +1,6 @@
 import numpy as np
 from neuroflow.src.layers.base import Layer
+from typing import Dict
 
 class Conv2D(Layer):
     def __init__(self, filters, kernel_size, stride=1, padding=0, input_shape=None, name=None):
@@ -7,14 +8,17 @@ class Conv2D(Layer):
         self.filters = filters
         self.kernel_size = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
         self.stride = stride
-        self.padding = padding  # số pixel pad (int)
-        self.input_shape = input_shape  # không cần thiết lắm nếu build theo x.shape
+        self.padding = padding 
+        self.input_shape = input_shape  
+        self.last_input: np.ndarray = None
+        self.params: Dict[str, np.ndarray] = {}
 
     def build(self, input_shape):
         self.batch_size, in_h, in_w, in_c = input_shape
         kh, kw = self.kernel_size
-        # Khởi tạo W: (filters, kh, kw, in_c), mỗi filter dùng cho mọi kênh
+        # khởi tạo W: (filters, kh, kw, in_c), mỗi filter dùng cho mọi kênh
         self.params["W"] = np.random.randn(self.filters, kh, kw, in_c) * 0.01
+        # self.params["W"] = np.ones((self.filters, kh, kw, in_c)) * 2
         self.params["b"] = np.zeros((self.filters,))
         self.built = True
 
@@ -34,7 +38,7 @@ class Conv2D(Layer):
                 out[i, j] = np.sum(A_pad[vert_start:vert_start+f, horiz_start:horiz_start+f] * W) + bias
         return out
 
-    def forward(self, x):
+    def forward(self, x: np.ndarray):
         if not self.built:
             self.build(x.shape)
 
@@ -44,7 +48,6 @@ class Conv2D(Layer):
         stride = self.stride
         pad = self.padding
 
-        # Tính output shape
         out_h = int((H - kh + 2 * pad) / stride) + 1
         out_w = int((W - kw + 2 * pad) / stride) + 1
         out = np.zeros((B, out_h, out_w, F))
@@ -60,5 +63,42 @@ class Conv2D(Layer):
                 out[b, :, :, f] = out_channel
         return out
 
-    def backward(self, grad_output):
-        raise NotImplementedError("Chưa triển khai Conv2D.backward")
+    def backward(self, grad_output: np.ndarray):
+        # raise NotImplementedError("Chưa triển khai Conv2D.backward")
+        B, H, W, C = self.last_input.shape
+        F, kh, kw, _ = self.params["W"].shape
+        _, H_out, W_out, _ = grad_output.shape
+
+        dL_dX = np.zeros_like(self.last_input)
+        dL_dW = np.zeros_like(self.params["W"])
+        dL_db = np.zeros_like(self.params["b"])
+
+        X_padded = np.pad(self.last_input, ((0,0), (self.padding, self.padding), (self.padding, self.padding), (0,0)), mode='constant')
+        dL_dX_padded = np.pad(dL_dX, ((0,0), (self.padding, self.padding), (self.padding, self.padding), (0,0)), mode='constant')
+
+        for b in range(B):
+            for f in range(F):
+                for u in range(H_out):
+                    for v in range(W_out):
+                        # index để cắt vùng
+                        vert_start = u * self.stride
+                        horiz_start = v * self.stride
+                        
+                        vert_end = u * self.stride + kh
+                        horiz_end = v * self.stride + kw
+                        for c in range(C):
+                            X_um_vn = X_padded[b, vert_start: vert_end, horiz_start: horiz_end, c]
+                            dL_dW[f, :, :, c] += grad_output[b, u, v, f] * X_um_vn
+                            dL_dX_padded[b, vert_start: vert_end, horiz_start: horiz_end, c] += grad_output[b, u, v, f] * self.params["W"][f, :, :, c]
+                        
+                dL_db[f] += np.sum(grad_output[b, :, :, f])
+
+        if self.padding > 0:
+            dL_dX = dL_dX_padded[:, self.padding : -self.padding, self.padding : - self.padding, :]
+        else:
+            dL_dX = dL_dX_padded
+
+        self.grads["W"] = dL_dW
+        self.grads["b"] = dL_db
+
+        return dL_dX
