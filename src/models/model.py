@@ -1,6 +1,7 @@
 from ..layers.base import Layer
 from typing import List
 from ...registry import get_loss, get_optimizer
+import numpy as np
 
 class Model(Layer):
     def __init__(self, name=None):
@@ -33,10 +34,11 @@ class Model(Layer):
         assert isinstance(layer, Layer), f"{layer} không phải lớp Layer"
         self.layers.append(layer)
 
-    def call(self, x):
+    def call(self, x: np.ndarray):
         """Thực hiện forward qua tất cả các layer"""
         for layer in self.layers:
             x = layer.forward(x)
+            # print(f"{layer.name}: {x.shape}")
         return x
 
     def fit(self, X, y, epochs=1):

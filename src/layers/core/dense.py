@@ -24,7 +24,7 @@ class Dense(Layer):
         self.params["b"] = np.zeros((self.units,))
         self.built = True
 
-    def forward(self, x):
+    def forward(self, x: np.ndarray):
         """
         x: đầu vào có shape (batch_size, input_dim)
         Trả về: output shape (batch_size, units)
@@ -41,7 +41,7 @@ class Dense(Layer):
 
         return output
     
-    def backward(self, grad_output):
+    def backward(self, grad_output: np.ndarray):
         """
         grad_output: gradient từ layer phía sau (shape: [batch_size, units])
         Trả về: grad_input (shape: [batch_size, input_dim])
