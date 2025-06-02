@@ -1,4 +1,5 @@
-import numpy as np
+# import numpy as np
+from ..backend import backend as np
 
 class MSELoss:
     def __call__(self, y_pred, y_true):

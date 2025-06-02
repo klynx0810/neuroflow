@@ -1,4 +1,5 @@
-import numpy as np
+# import numpy as np
+from ...backend import backend as np
 from ..base import Layer
 
 class Softmax(Layer):
