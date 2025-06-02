@@ -5,5 +5,6 @@ from ..src.layers.activations.activation import Activation
 from ..src.layers.reshaping.flatten import Flatten
 from ..src.layers.pooling.max_pooling2d import MaxPooling2D
 from ..src.layers.pooling.global_max_pooling2d import GlobalMaxPooling2D
+from ..src.layers.core.input_layer import Input
 
-__all__ = ["Layer", "Dense", "Conv2D", "Activation", "Flatten", "MaxPooling2D", "GlobalMaxPooling2D"]
+__all__ = ["Layer", "Dense", "Conv2D", "Activation", "Flatten", "MaxPooling2D", "GlobalMaxPooling2D", "Input"]
