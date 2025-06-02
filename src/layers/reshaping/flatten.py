@@ -2,7 +2,14 @@ import numpy as np
 from ..base import Layer
 
 class Flatten(Layer):
-    def forward(self, x: np.ndarray):
+    def __init__(self, name=None):
+        """
+        Lớp Flatten biến đổi đầu vào từ (B, d1, d2, ..., dn) → (B, D)
+        name: tên lớp (tuỳ chọn)
+        """
+        super().__init__(name=name)
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
         """
         x: input (batch_size, d1, d2, ..., dn)
         return: (batch_size, d1 * d2 * ... * dn)
@@ -10,7 +17,7 @@ class Flatten(Layer):
         self.input_shape = x.shape  # lưu lại để dùng khi backward
         return x.reshape(x.shape[0], -1)
 
-    def backward(self, grad_output: np.ndarray):
+    def backward(self, grad_output: np.ndarray) -> np.ndarray:
         """
         grad_output: gradient từ layer sau, shape (batch_size, D)
         return: reshape lại về input shape ban đầu
