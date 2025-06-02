@@ -3,13 +3,15 @@ from typing import List
 from ...registry import get_loss, get_optimizer
 import numpy as np
 # from ..backend import backend as np
+from tqdm import tqdm
+from tqdm import trange
 
 class Model(Layer):
     def __init__(self, name=None):
         super().__init__(name=name)
         self.layers: List[Layer] = []
         self.optimizer = None
-        self.loss_fn = None
+        self.loss_fn: Layer = None
 
     @property
     def _params(self):
@@ -42,32 +44,72 @@ class Model(Layer):
             # print(f"{layer.name}: {x.shape}")
         return x
 
-    def fit(self, X, y, epochs=1):
+    # def fit(self, X, y, epochs=1):
+    #     for epoch in range(epochs):
+    #         # 1. Forward
+    #         y_pred = self.call(X)
+
+    #         # 2. Loss
+    #         loss = self.loss_fn(y_pred, y)
+
+    #         # 3. Đạo hàm của loss theo y_pred
+    #         if hasattr(self.loss_fn, "backward"):
+    #             grad_output = self.loss_fn.backward(y_pred, y)
+    #         else:
+    #             raise NotImplementedError("Loss function phải có backward()")
+
+    #         # 4. Truyền ngược
+    #         for layer in reversed(self.layers):
+    #             if hasattr(layer, "backward"):
+    #                 grad_output = layer.backward(grad_output)
+
+    #         # 5. Cập nhật trọng số qua optimizer
+    #         for layer in self.layers:
+    #             if hasattr(layer, "params") and hasattr(layer, "grads"):
+    #                 self.optimizer.step(layer.params, layer.grads)
+
+    #         print(f"Epoch {epoch+1}/{epochs} - Loss: {loss:.4f}")
+
+    def fit(self, X, y, epochs=1, batch_size=32):
+        num_samples = X.shape[0]
+        num_batches = int(np.ceil(num_samples / batch_size))
+
         for epoch in range(epochs):
-            # 1. Forward
-            y_pred = self.call(X)
+            epoch_loss = 0.0
+            print(f"\nEpoch {epoch+1}/{epochs}")
+            with trange(num_batches, desc=f"Epoch {epoch+1}/{epochs}", unit="batch") as t:
+                for i in t:
+                    start = i * batch_size
+                    end = min(start + batch_size, num_samples)
+                    X_batch = X[start:end]
+                    y_batch = y[start:end]
 
-            # 2. Loss
-            loss = self.loss_fn(y_pred, y)
+                    # 1. Forward
+                    y_pred = self.call(X_batch)
 
-            # 3. Đạo hàm của loss theo y_pred
-            if hasattr(self.loss_fn, "backward"):
-                grad_output = self.loss_fn.backward(y_pred, y)
-            else:
-                raise NotImplementedError("Loss function phải có backward()")
+                    # 2. Loss
+                    loss = self.loss_fn(y_pred, y_batch)
+                    epoch_loss += loss
 
-            # 4. Truyền ngược
-            for layer in reversed(self.layers):
-                if hasattr(layer, "backward"):
-                    grad_output = layer.backward(grad_output)
+                    # 3. Backward
+                    if hasattr(self.loss_fn, "backward"):
+                        grad_output = self.loss_fn.backward(y_pred, y_batch)
+                    else:
+                        raise NotImplementedError("Loss function phải có backward()")
 
-            # 5. Cập nhật trọng số qua optimizer
-            for layer in self.layers:
-                if hasattr(layer, "params") and hasattr(layer, "grads"):
-                    self.optimizer.step(layer.params, layer.grads)
+                    for layer in reversed(self.layers):
+                        if hasattr(layer, "backward"):
+                            grad_output = layer.backward(grad_output)
 
-            print(f"Epoch {epoch+1}/{epochs} - Loss: {loss:.4f}")
+                    # 4. Update
+                    for layer in self.layers:
+                        if hasattr(layer, "params") and hasattr(layer, "grads"):
+                            self.optimizer.step(layer.params, layer.grads)
 
+                    t.set_postfix(loss=loss)
+
+            avg_loss = epoch_loss / num_batches
+            print(f"Epoch {epoch+1} Completed - Avg Loss: {avg_loss:.4f}")
 
     def predict(self, X):
         return self.call(X)
