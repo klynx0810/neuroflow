@@ -1,8 +1,8 @@
 from ..layers.base import Layer
 from typing import List
 from ...registry import get_loss, get_optimizer
-# import numpy as np
-from ..backend import backend as np
+import numpy as np
+# from ..backend import backend as np
 
 class Model(Layer):
     def __init__(self, name=None):

@@ -1,5 +1,5 @@
-# import numpy as np
-from ...backend import backend as np
+import numpy as np
+# from ...backend import backend as np
 from neuroflow.src.layers.base import Layer
 from typing import Dict
 from ....registry import get_activation
@@ -55,7 +55,7 @@ class Conv2D(Layer):
                 out[i, j] = np.sum(A_pad[vert_start:vert_start+f, horiz_start:horiz_start+f] * W) + bias
         return out
 
-    def forward(self, x: np.ndarray):
+    def forward_1(self, x: np.ndarray):
         """
         x: input đầu vào, shape (batch_size, height, width, channels)
         Trả về: output shape (batch_size, out_h, out_w, filters)
@@ -90,7 +90,7 @@ class Conv2D(Layer):
 
         return output
 
-    def backward(self, grad_output: np.ndarray):
+    def backward_1(self, grad_output: np.ndarray):
         """
         grad_output: gradient từ layer sau, shape (batch_size, out_h, out_w, filters)
         Trả về: grad_input truyền ngược lại (same shape as input)
@@ -133,3 +133,103 @@ class Conv2D(Layer):
         self.grads["b"] = dL_db
 
         return dL_dX
+
+    def forward(self, x: np.ndarray):
+        """
+        Tăng tốc bằng im2col + matmul.
+        x: (B, H, W, C)
+        return: (B, out_h, out_w, F)
+        """
+        if not self.built:
+            self.build(x.shape)
+
+        self.last_input = x
+        B, H, W, C = x.shape
+        F, kh, kw, _ = self.params["W"].shape
+        stride = self.stride
+        pad = self.padding
+
+        out_h = (H + 2 * pad - kh) // stride + 1
+        out_w = (W + 2 * pad - kw) // stride + 1
+
+        # Bước 1: im2col
+        x_padded = np.pad(x, ((0, 0), (pad, pad), (pad, pad), (0, 0)), mode='constant')
+        cols = []
+        for i in range(kh):
+            for j in range(kw):
+                patch = x_padded[:, i:i+stride*out_h:stride, j:j+stride*out_w:stride, :]  # (B, out_h, out_w, C)
+                cols.append(patch)
+        cols = np.stack(cols, axis=1)  # (B, kh*kw, out_h, out_w, C)
+        cols = cols.transpose(0, 2, 3, 1, 4).reshape(B, out_h * out_w, kh * kw * C)  # (B, out_h*out_w, kh*kw*C)
+
+        # Bước 2: flatten W
+        W_col = self.params["W"].reshape(F, -1).T  # (kh*kw*C, F)
+
+        # Bước 3: matmul
+        out = np.matmul(cols, W_col)  # (B, out_h*out_w, F)
+        out += self.params["b"]  # broadcasting bias
+
+        out = out.reshape(B, out_h, out_w, F)
+
+        # Kích hoạt
+        if self.activation:
+            return self.activation.forward(out)
+        return out
+
+
+    def backward(self, grad_output: np.ndarray):
+        """
+        Tính gradient theo kiểu vector hóa (im2col) cho tốc độ cao
+        grad_output: (B, out_h, out_w, F)
+        return: grad_input (same shape as input)
+        """
+        x = self.last_input
+        B, H, W, C = x.shape
+        F, kh, kw, _ = self.params["W"].shape
+        stride = self.stride
+        pad = self.padding
+        out_h = (H + 2 * pad - kh) // stride + 1
+        out_w = (W + 2 * pad - kw) // stride + 1
+
+        # im2col lại
+        x_padded = np.pad(x, ((0, 0), (pad, pad), (pad, pad), (0, 0)), mode='constant')
+        cols = []
+        for i in range(kh):
+            for j in range(kw):
+                patch = x_padded[:, i:i+stride*out_h:stride, j:j+stride*out_w:stride, :]
+                cols.append(patch)
+        cols = np.stack(cols, axis=1)  # (B, kh*kw, out_h, out_w, C)
+        cols = cols.transpose(0, 2, 3, 1, 4).reshape(B, out_h * out_w, kh * kw * C)  # (B, out_h*out_w, kh*kw*C)
+
+        # reshape grad_output
+        dZ = grad_output.reshape(B, out_h * out_w, F)
+
+        # dW
+        dW = np.zeros_like(self.params["W"])  # (F, kh, kw, C)
+        for b in range(B):
+            dW += dZ[b].T @ cols[b]  # (F, kh*kw*C)
+        dW = dW / B
+        dW = dW.T.reshape(F, kh, kw, C)
+
+        # db
+        db = np.sum(grad_output, axis=(0, 1, 2)) / B  # (F,)
+
+        # dx
+        W_col = self.params["W"].reshape(F, -1)  # (F, kh*kw*C)
+        dx_cols = np.matmul(dZ, W_col)  # (B, out_h*out_w, kh*kw*C)
+        dx_cols = dx_cols.reshape(B, out_h, out_w, kh, kw, C).transpose(0, 3, 4, 1, 2, 5)  # (B, kh, kw, out_h, out_w, C)
+
+        dx_padded = np.zeros((B, H + 2 * pad, W + 2 * pad, C))
+        for i in range(kh):
+            for j in range(kw):
+                dx_padded[:, i:i+stride*out_h:stride, j:j+stride*out_w:stride, :] += dx_cols[:, i, j, :, :, :]
+
+        # remove padding
+        if pad > 0:
+            dx = dx_padded[:, pad:-pad, pad:-pad, :]
+        else:
+            dx = dx_padded
+
+        self.grads["W"] = dW
+        self.grads["b"] = db
+        return dx

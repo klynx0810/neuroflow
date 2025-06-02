@@ -1,5 +1,5 @@
-# import numpy as np
-from ..backend import backend as np
+import numpy as np
+# from ..backend import backend as np
 
 class CategoricalCrossentropy:
     def __call__(self, y_true, y_pred):
