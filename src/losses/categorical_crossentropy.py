@@ -16,11 +16,10 @@ class CategoricalCrossentropy:
         loss = -np.sum(y_true * np.log(y_pred + eps), axis=1)
         return np.mean(loss)
 
-    def backward(self):
+    def backward(self, y_true, y_pred):
         """
-        Gradient của loss theo y_pred
+        Gradient của loss theo y_pred: dL/dy_pred
         """
-        # batch size
-        batch_size = self.y_true.shape[0]
-        return -self.y_true / (self.y_pred + 1e-12) / batch_size
+        batch_size = y_true.shape[0]
+        return -y_true / (y_pred + 1e-12) / batch_size
         
