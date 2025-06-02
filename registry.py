@@ -8,6 +8,7 @@ from .src.optimizers.adam import Adam
 from .src.layers.activations.relu import ReLU
 from .src.layers.activations.sigmoid import Sigmoid
 from .src.layers.activations.tanh import Tanh
+from .src.layers.activations.softmax import Softmax
 
 LOSS_REGISTRY = {
     "mse": MSELoss,
@@ -23,7 +24,8 @@ OPTIMIZER_REGISTRY = {
 ACTIVATION_REGISTRY = {
     "relu": ReLU,
     "sigmoid": Sigmoid,
-    "tanh": Tanh 
+    "tanh": Tanh,
+    "softmax": Softmax,
 }
 
 def get_loss(identifier):
