@@ -1,5 +1,4 @@
 import numpy as np
-# from ...backend import backend as np
 from ..base import Layer
 from .base_global_pooling import BaseGlobalPooling
 

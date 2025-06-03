@@ -1,5 +1,4 @@
 import numpy as np
-# from ..backend import backend as np
 
 class BinaryCrossentropy:
     def __call__(self, y_true, y_pred):

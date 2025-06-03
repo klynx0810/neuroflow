@@ -1,5 +1,4 @@
 import numpy as np
-# from ...backend import backend as np
 from neuroflow.src.layers.base import Layer
 from typing import Dict
 from ....registry import get_activation

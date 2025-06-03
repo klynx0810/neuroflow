@@ -2,7 +2,6 @@ from ..layers.base import Layer
 from typing import List
 from ...registry import get_loss, get_optimizer
 import numpy as np
-# from ..backend import backend as np
 from tqdm import tqdm
 from tqdm import trange
 
