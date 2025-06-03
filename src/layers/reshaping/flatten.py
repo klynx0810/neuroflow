@@ -2,12 +2,13 @@ import numpy as np
 from ..base import Layer
 
 class Flatten(Layer):
-    def __init__(self, name=None):
+    def __init__(self, input_shape=None, name=None):
         """
         Lớp Flatten biến đổi đầu vào từ (B, d1, d2, ..., dn) → (B, D)
         name: tên lớp (tuỳ chọn)
         """
         super().__init__(name=name)
+        self.input_shape = input_shape
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         """
