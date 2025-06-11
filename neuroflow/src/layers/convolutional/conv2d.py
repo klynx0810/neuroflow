@@ -180,7 +180,9 @@ class Conv2D(Layer):
         """
         if not self.built:
             self.build(x.shape)
-            
+
+        self.last_input = x
+        
         F, kh, kw, C = self.params["W"].shape
         cols, OH, OW = self.im2col_optimized(x, kh, kw, self.stride, self.padding)     # (B*OH*OW, kh*kw*C)
         W = self.params["W"].reshape(F, -1)                                  # (F, kh*kw*C)
