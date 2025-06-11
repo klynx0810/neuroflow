@@ -54,7 +54,7 @@ class Conv2D(Layer):
                 out[i, j] = np.sum(A_pad[vert_start:vert_start+f, horiz_start:horiz_start+f] * W) + bias
         return out
 
-    def forward(self, x: np.ndarray):
+    def forward_basic(self, x: np.ndarray):
         """
         x: input đầu vào, shape (batch_size, height, width, channels)
         Trả về: output shape (batch_size, out_h, out_w, filters)
@@ -89,7 +89,7 @@ class Conv2D(Layer):
 
         return output
 
-    def backward(self, grad_output: np.ndarray):
+    def backward_basic(self, grad_output: np.ndarray):
         """
         grad_output: gradient từ layer sau, shape (batch_size, out_h, out_w, filters)
         Trả về: grad_input truyền ngược lại (same shape as input)
@@ -132,4 +132,64 @@ class Conv2D(Layer):
         self.grads["b"] = dL_db
 
         return dL_dX
+
+    def im2col(self, x: np.ndarray, kh, kw, stride=1, padding=0):
+        B, W, H, C = x.shape
+        OH = (H + 2 * padding - kh) // stride + 1
+        OW = (W + 2 * padding - kw) // stride + 1
+
+        X_pad = np.pad(x, ((0, 0), (padding, padding), (padding, padding), (0,0)), mode="constant")
+        cols = []
+
+        for i in range(OH):
+            for j in range(OW):
+                patch = X_pad[:, i*stride:i*stride+kh, j*stride:j*stride+kw, :]
+                # (B, kh*kw*C)
+                cols.append(patch.reshape(B, -1))
+
+        # (B, OH*OW, kh*kw*C)
+        cols = np.stack(cols, axis=1)
+        return cols.reshape(B * OH * OW, kh * kw * C), OH, OW
+    
+    def im2col_optimized(self, x: np.ndarray, kh, kw, stride=1, padding=0):
+        B, H, W, C = x.shape
+        OH = (H + 2 * padding - kh) // stride + 1
+        OW = (W + 2 * padding - kw) // stride + 1
+
+        x_padded = np.pad(x, ((0, 0), (padding, padding), (padding, padding), (0, 0)))
+        
+        shape = (B, OH, OW, kh, kw, C)
+        strides = (
+            x_padded.strides[0],
+            stride * x_padded.strides[1],
+            stride * x_padded.strides[2],
+            x_padded.strides[1],
+            x_padded.strides[2],
+            x_padded.strides[3]
+        )
+        
+        patches = np.lib.stride_tricks.as_strided(x_padded, shape=shape, strides=strides)
+        return patches.reshape(B * OH * OW, -1), OH, OW
+
+
+    def forward(self, x: np.ndarray):
+        """
+        x: (B, H, W, C)
+        kernel: (F, kh, kw, C)
+        return: (B, OH, OW, F)
+        """
+        if not self.built:
+            self.build(x.shape)
+            
+        F, kh, kw, C = self.params["W"].shape
+        cols, OH, OW = self.im2col_optimized(x, kh, kw, self.stride, self.padding)     # (B*OH*OW, kh*kw*C)
+        W = self.params["W"].reshape(F, -1)                                  # (F, kh*kw*C)
+        
+        out: np.ndarray = cols @ W.T                                           # (B*OH*OW, F)
+        B = x.shape[0]
+        out = out.reshape(B, OH, OW, F)
+        return out
+
+    def col2im(self, grad_output: np.ndarray, kh, kw, stride=1, padding=0):
+        pass
 
