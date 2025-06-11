@@ -190,6 +190,86 @@ class Conv2D(Layer):
         out = out.reshape(B, OH, OW, F)
         return out
 
-    def col2im(self, grad_output: np.ndarray, kh, kw, stride=1, padding=0):
-        pass
+    def col2im(self, dX_col: np.ndarray, input_shape, kh, kw, stride=1, padding=0):
+        """
+        dX_col: (B * OH * OW, kh * kw * C) - gradient ở dạng patch
+        Trả về dx: (B, H, W, C) - gradient theo input
+        """
+        B, H, W, C = input_shape
+        OH = (H + 2 * padding - kh) // stride + 1
+        OW = (W + 2 * padding - kw) // stride + 1
 
+        dx_padded = np.zeros((B, H + 2 * padding, W + 2 * padding, C))
+        dX_col = dX_col.reshape(B, OH * OW, kh * kw * C)
+
+        idx = 0
+        for i in range(OH):
+            for j in range(OW):
+                patch = dX_col[:, idx, :].reshape(B, kh, kw, C)
+                dx_padded[:, i*stride:i*stride+kh, j*stride:j*stride+kw, :] += patch
+                idx += 1
+
+        if padding > 0:
+            return dx_padded[:, padding:-padding, padding:-padding, :]
+        return dx_padded
+    
+    def col2im_optimized(self, dX_col: np.ndarray, input_shape, kh, kw, stride=1, padding=0):
+        """
+        dX_col: (B * OH * OW, kh * kw * C)
+        input_shape: (B, H, W, C)
+        """
+        B, H, W, C = input_shape
+        OH = (H + 2 * padding - kh) // stride + 1
+        OW = (W + 2 * padding - kw) // stride + 1
+        H_pad, W_pad = H + 2 * padding, W + 2 * padding
+
+        dX_col = dX_col.reshape(B, OH, OW, kh, kw, C)
+
+        dx_padded = np.zeros((B, H_pad, W_pad, C), dtype=dX_col.dtype)
+
+        shape = (B, OH, OW, kh, kw, C)
+        strides = (
+            dx_padded.strides[0],
+            stride * dx_padded.strides[1],
+            stride * dx_padded.strides[2],
+            dx_padded.strides[1],
+            dx_padded.strides[2],
+            dx_padded.strides[3],
+        )
+        dx_strided = np.lib.stride_tricks.as_strided(dx_padded, shape=shape, strides=strides)
+
+        np.add.at(dx_strided, (), dX_col)
+
+        if padding > 0:
+            return dx_padded[:, padding:-padding, padding:-padding, :]
+        return dx_padded
+
+
+    def backward(self, grad_output: np.ndarray):
+        """
+        grad_output: (B, OH, OW, F)
+        Trả về: dx: (B, H, W, C)
+        """
+        B, H, W, C = self.last_input.shape
+        F, kh, kw, _ = self.params["W"].shape
+        _, H_out, W_out, _ = grad_output.shape
+
+        dL_dX = np.zeros_like(self.last_input)
+        dL_dW = np.zeros_like(self.params["W"])
+        # dL_db = np.zeros_like(self.params["b"])
+
+        cols, OH, OW = self.im2col_optimized(self.last_input, kh, kw, self.stride, self.padding)  # (B*OH*OW, kh*kw*C)
+        grad_output_flat = grad_output.reshape(B * OH * OW, F)  # (B*OH*OW, F)
+
+        dL_dW = grad_output_flat.T @ cols
+        dL_dW = dL_dW.reshape(F, kh, kw, C)
+        dL_db = np.sum(grad_output, axis=(0, 1, 2)) # (F,)
+
+        W_flat = self.params["W"].reshape(F, -1)  # (F, kh*kw*C)
+        dL_dX_col = grad_output_flat @ W_flat   # (B*OH*OW, kh*kw*C)
+        dL_dX = self.col2im_optimized(dL_dX_col, self.last_input.shape, kh, kw, self.stride, self.padding)  # (B, H, W, C)
+
+        self.grads["W"] = dL_dW
+        self.grads["b"] = dL_db
+
+        return dL_dX
