@@ -91,12 +91,13 @@ class Model(Layer):
                     loss = self.loss_fn(y_batch, y_pred)
                     epoch_loss += loss
 
-                    # 2.1 Optional: Metric
                     if self.metrics:
                         metric_value = self.metrics(y_batch, y_pred)
-                        t.set_postfix(loss=loss, metric=metric_value)
+                        metric = self.metrics.name
+                        t.set_postfix(loss=loss, **{metric: metric_value})
                     else:
                         t.set_postfix(loss=loss)
+
 
                     # 3. Backward
                     if hasattr(self.loss_fn, "backward"):
@@ -113,7 +114,7 @@ class Model(Layer):
                         if hasattr(layer, "params") and hasattr(layer, "grads"):
                             self.optimizer.step(layer.params, layer.grads)
 
-                    t.set_postfix(loss=loss)
+                    # t.set_postfix(loss=loss)
 
             avg_loss = epoch_loss / num_batches
             print(f"Epoch {epoch+1} Completed - Avg Loss: {avg_loss:.4f}")
