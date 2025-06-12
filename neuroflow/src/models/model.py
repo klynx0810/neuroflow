@@ -1,6 +1,6 @@
 from ..layers.base import Layer
 from typing import List
-from ...registry import get_loss, get_optimizer
+from ...registry import get_loss, get_optimizer, get_metrics
 import numpy as np
 from tqdm import tqdm
 from tqdm import trange
@@ -25,12 +25,13 @@ class Model(Layer):
                     all_params[f"{layer.name}.{k}"] = v
         return all_params
 
-    def compile(self, optimizer, loss):
+    def compile(self, optimizer, loss, metrics = None):
         """
         Thiết lập loss function và optimizer từ string hoặc callable
         """
         self.optimizer = get_optimizer(optimizer)
         self.loss_fn = get_loss(loss)
+        self.metrics = get_metrics(metrics) if metrics else None
 
     def add(self, layer: Layer):
         assert isinstance(layer, Layer), f"{layer} không phải lớp Layer"
@@ -90,6 +91,13 @@ class Model(Layer):
                     loss = self.loss_fn(y_batch, y_pred)
                     epoch_loss += loss
 
+                    # 2.1 Optional: Metric
+                    if self.metrics:
+                        metric_value = self.metrics(y_batch, y_pred)
+                        t.set_postfix(loss=loss, metric=metric_value)
+                    else:
+                        t.set_postfix(loss=loss)
+
                     # 3. Backward
                     if hasattr(self.loss_fn, "backward"):
                         grad_output = self.loss_fn.backward(y_batch, y_pred)
@@ -120,4 +128,10 @@ class Model(Layer):
         preds = self.call(X)
         loss = self.loss_fn(preds, y)
         print(f"Evaluation Loss: {loss:.4f}")
+
+        if self.metrics:
+            metric_value = self.metrics(y, preds)
+            print(f"Evaluation {self.metrics.name.title()}: {metric_value:.4f}")
+            return loss, metric_value
+        
         return loss

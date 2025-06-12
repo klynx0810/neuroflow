@@ -10,6 +10,8 @@ from .src.layers.activations.sigmoid import Sigmoid
 from .src.layers.activations.tanh import Tanh
 from .src.layers.activations.softmax import Softmax
 
+from .src.metrics.accuracy import Accuracy
+
 LOSS_REGISTRY = {
     "mse": MSELoss,
     "categorical_crossentropy": CategoricalCrossentropy,
@@ -26,6 +28,10 @@ ACTIVATION_REGISTRY = {
     "sigmoid": Sigmoid,
     "tanh": Tanh,
     "softmax": Softmax,
+}
+
+METRICS_REGISTRY = {
+    "accuracy": Accuracy,
 }
 
 def get_loss(identifier):
@@ -46,5 +52,13 @@ def get_activation(identifier):
         act_cls = ACTIVATION_REGISTRY.get(identifier.lower())
         if act_cls is None:
             raise ValueError(f"Unknown activation '{identifier}'")
+        return act_cls()
+    return identifier
+
+def get_metrics(identifier):
+    if isinstance(identifier, str):
+        act_cls = METRICS_REGISTRY.get(identifier.lower())
+        if act_cls is None:
+            raise ValueError(f"Unknown metrics '{identifier}'")
         return act_cls()
     return identifier
