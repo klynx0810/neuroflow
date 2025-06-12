@@ -87,12 +87,12 @@ class Model(Layer):
                     y_pred = self.call(X_batch)
 
                     # 2. Loss
-                    loss = self.loss_fn(y_pred, y_batch)
+                    loss = self.loss_fn(y_batch, y_pred)
                     epoch_loss += loss
 
                     # 3. Backward
                     if hasattr(self.loss_fn, "backward"):
-                        grad_output = self.loss_fn.backward(y_pred, y_batch)
+                        grad_output = self.loss_fn.backward(y_batch, y_pred)
                     else:
                         raise NotImplementedError("Loss function phải có backward()")
 
