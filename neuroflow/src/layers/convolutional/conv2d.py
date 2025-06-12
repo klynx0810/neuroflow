@@ -190,7 +190,13 @@ class Conv2D(Layer):
         out: np.ndarray = cols @ W.T                                           # (B*OH*OW, F)
         B = x.shape[0]
         out = out.reshape(B, OH, OW, F)
-        return out
+
+        if self.activation:
+            output = self.activation.forward(out)
+        else:
+            output = out
+
+        return output
 
     def col2im(self, dX_col: np.ndarray, input_shape, kh, kw, stride=1, padding=0):
         """
@@ -252,6 +258,9 @@ class Conv2D(Layer):
         grad_output: (B, OH, OW, F)
         Trả về: dx: (B, H, W, C)
         """
+        if self.activation:
+            grad_output = self.activation.backward(grad_output=grad_output)
+            
         B, H, W, C = self.last_input.shape
         F, kh, kw, _ = self.params["W"].shape
         _, H_out, W_out, _ = grad_output.shape

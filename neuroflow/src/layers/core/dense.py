@@ -46,6 +46,9 @@ class Dense(Layer):
         grad_output: gradient từ layer phía sau (shape: [batch_size, units])
         Trả về: grad_input (shape: [batch_size, input_dim])
         """
+        if self.activation:
+            grad_output = self.activation.backward(grad_output=grad_output)
+            
         W = self.params["W"]
         x = self.last_input
 
