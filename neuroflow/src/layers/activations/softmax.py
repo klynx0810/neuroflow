@@ -22,7 +22,7 @@ class Softmax(Layer):
         self.output = self._softmax(x)
         return self.output
 
-    def backward(self, grad_output: np.ndarray) -> np.ndarray:
+    def backward_basic(self, grad_output: np.ndarray) -> np.ndarray:
         """
         Tính đạo hàm lan truyền ngược
         grad_output: (batch_size, num_classes)
@@ -34,3 +34,13 @@ class Softmax(Layer):
             jacobian = np.diagflat(y) - y @ y.T  # (C, C)
             dx[i] = jacobian @ grad_output[i]
         return dx
+    
+    def backward(self, grad_output: np.ndarray) -> np.ndarray:
+        """
+        Tính đạo hàm lan truyền ngược một cách vector hóa
+        grad_output: (B, C)
+        return: (B, C)
+        """
+        y = self.output  # (B, C)
+        dot = np.sum(grad_output * y, axis=1, keepdims=True)  # (B, 1)
+        return y * (grad_output - dot)

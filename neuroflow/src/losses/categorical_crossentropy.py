@@ -3,23 +3,22 @@ import numpy as np
 class CategoricalCrossentropy:
     def __call__(self, y_true, y_pred):
         return self.forward(y_true, y_pred)
-    
+
     def forward(self, y_true, y_pred):
         """
-        y_true: (batch_size, num_classes) - one-hot
-        y_pred: (batch_size, num_classes) - output đã qua softmax
+        y_true: (B, C), one-hot
+        y_pred: (B, C), output đã qua softmax
         """
-        self.y_true = y_true
-        self.y_pred = y_pred
-        # để tránh log(0)
         eps = 1e-12
-        loss = -np.sum(y_true * np.log(y_pred + eps), axis=1)
-        return np.mean(loss)
+        # Vector hóa: chỉ cần lấy log prob tại class đúng
+        # axis=1: lấy chỉ số class thật (np.argmax dùng được vì one-hot)
+        log_probs = np.log(np.clip(y_pred, eps, 1.0))  # tránh log(0)
+        loss = -np.sum(y_true * log_probs) / y_true.shape[0]
+        return loss
 
     def backward(self, y_true, y_pred):
         """
-        Gradient của loss theo y_pred: dL/dy_pred
+        Gradient: dL/dy_pred
         """
-        batch_size = y_true.shape[0]
-        return -y_true / (y_pred + 1e-12) / batch_size
-        
+        eps = 1e-12
+        return -y_true / np.clip(y_pred, eps, 1.0) / y_true.shape[0]
