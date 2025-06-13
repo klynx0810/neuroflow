@@ -35,5 +35,5 @@ class Layer:
         """Trả về cấu hình layer, override ở lớp con nếu cần"""
         return {
             "name": self.name,
-            "trainable": self.trainable
+            # "trainable": self.trainable
         }
