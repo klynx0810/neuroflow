@@ -1,10 +1,13 @@
 import json
 import h5py
 import numpy as np
-from .saving_lib import Conv2D, Dense, Flatten, Dropout, MaxPooling2D, Activation, Model
+from .saving_lib import Conv2D, Dense, Flatten, Dropout, MaxPooling2D, Activation
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ..models.model import Model
 
 
-def save_model_to_h5(model: Model, filepath: str):
+def save_model_to_h5(model: "Model", filepath: str):
     """
     Lưu toàn bộ model (cấu trúc + trọng số) vào file .h5
     """
@@ -26,14 +29,14 @@ def save_model_to_h5(model: Model, filepath: str):
                     group.create_dataset(key, data=val)
 
 
-def load_model_from_h5(filepath: str, model_class: Model):
+def load_model_from_h5(filepath: str, model_class: "Model"):
     """
     Tải model từ file .h5 đã lưu.
     Cần truyền vào class gốc, ví dụ: Sequential
     """
     with h5py.File(filepath, "r") as f:
         config = json.loads(f.attrs["model_config"])
-        model: Model = model_class()
+        model: "Model" = model_class()
 
         for layer_cfg in config:
             layer_class = layer_cfg.pop("class")
