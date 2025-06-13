@@ -15,7 +15,11 @@ class Conv2D(Layer):
         """
         super().__init__(name=name)
         self.filters = filters
-        self.kernel_size = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
+        # self.kernel_size = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
+        if isinstance(kernel_size, int):
+            self.kernel_size = (kernel_size, kernel_size)
+        else:
+            self.kernel_size = tuple(kernel_size)
         self.stride = stride
         self.padding = padding 
         self.input_shape = input_shape  
