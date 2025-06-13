@@ -284,3 +284,15 @@ class Conv2D(Layer):
         self.grads["b"] = dL_db
 
         return dL_dX
+    
+    def get_config(self):
+        base_config:dict = super().get_config()
+        base_config.update({
+            "filters": self.filters,
+            "kernel_size": self.kernel_size,
+            "stride": self.stride,
+            "padding": self.padding,
+            "input_shape": self.input_shape,
+            "activation": self.activation.name if self.activation else None
+        })
+        return base_config

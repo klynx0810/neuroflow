@@ -30,3 +30,10 @@ class Layer:
 
     def get_grads(self):
         return self.grads
+    
+    def get_config(self):
+        """Trả về cấu hình layer, override ở lớp con nếu cần"""
+        return {
+            "name": self.name,
+            "trainable": self.trainable
+        }

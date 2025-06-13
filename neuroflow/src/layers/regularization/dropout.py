@@ -57,3 +57,11 @@ class Dropout(Layer):
             Gradient đầu ra sau khi đã nhân với mask dropout.
         """
         return grad_output * self.mask
+    
+    def get_config(self):
+        base_config: dict = super().get_config()
+        base_config.update({
+            "rate": self.rate,
+            "seed": self.seed
+        })
+        return base_config

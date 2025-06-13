@@ -59,3 +59,12 @@ class Dense(Layer):
         # Gradient w.r.t input (truyền cho layer trước đó)
         grad_input = grad_output @ W.T           # shape: (batch_size, input_dim)
         return grad_input
+
+    def get_config(self):
+        base_config: dict = super().get_config()
+        base_config.update({
+            "units": self.units,
+            "activation": self.activation.name,
+            "input_dim": self.input_dim
+        })
+        return base_config

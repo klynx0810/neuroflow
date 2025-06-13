@@ -11,3 +11,6 @@ class Activation(Layer):
 
     def backward(self, grad_output):
         return self.activation.backward(grad_output)
+    
+    def get_config(self):
+        return super().get_config()

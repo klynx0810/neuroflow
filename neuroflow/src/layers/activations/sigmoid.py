@@ -11,3 +11,6 @@ class Sigmoid(Layer):
 
     def backward(self, grad_output):
         return grad_output * self.output * (1 - self.output)
+    
+    def get_config(self):
+        return super().get_config()

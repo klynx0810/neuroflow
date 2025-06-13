@@ -44,3 +44,6 @@ class Softmax(Layer):
         y = self.output  # (B, C)
         dot = np.sum(grad_output * y, axis=1, keepdims=True)  # (B, 1)
         return y * (grad_output - dot)
+    
+    def get_config(self):
+        return super().get_config()

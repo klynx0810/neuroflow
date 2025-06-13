@@ -4,6 +4,7 @@ from ...registry import get_loss, get_optimizer, get_metrics
 import numpy as np
 from tqdm import tqdm
 from tqdm import trange
+from ..saving import saving_api
 
 class Model(Layer):
     def __init__(self, name=None):
@@ -136,3 +137,12 @@ class Model(Layer):
             return loss, metric_value
         
         return loss
+    
+    def save(self, filepath: str):
+        """Lưu model vào file .h5"""
+        saving_api.save_model_to_h5(self, filepath)
+
+    @classmethod
+    def load(cls, filepath: str):
+        """Load model từ file .h5"""
+        return saving_api.load_model_from_h5(filepath, model_class=cls)

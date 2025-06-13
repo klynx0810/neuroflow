@@ -24,3 +24,10 @@ class Flatten(Layer):
         return: reshape lại về input shape ban đầu
         """
         return grad_output.reshape(self.input_shape)
+
+    def get_config(self):
+        base_config: dict = super().get_config()
+        base_config.update({
+            "input_shape": self.input_shape
+        })
+        return base_config

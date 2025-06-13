@@ -42,3 +42,10 @@ class Input(Layer):
         - chính là grad_output, giữ nguyên không thay đổi
         """
         return grad_output
+    
+    def get_config(self):
+        base_config: dict = super().get_config()
+        base_config.update({
+            "input_shape": self.input_shape
+        })
+        return base_config

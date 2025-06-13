@@ -12,3 +12,6 @@ class ReLU(Layer):
     def backward(self, grad_output):
         grad_input = grad_output * (self.input > 0)
         return grad_input
+    
+    def get_config(self):
+        return super().get_config()

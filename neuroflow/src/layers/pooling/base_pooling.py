@@ -86,3 +86,12 @@ class BasePooling(Layer):
         grad_output: gradient từ layer sau
         """
         raise NotImplementedError(f"{self.__class__.__name__} phải định nghĩa backward()")
+    
+    def get_config(self):
+        base_config: dict = super().get_config()
+        base_config.update({
+            "pool_size": self.pool_size,
+            "strides": self.strides,
+            "padding": self.padding
+        })
+        return base_config
