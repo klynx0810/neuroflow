@@ -19,9 +19,9 @@ class Dropout(Layer):
         assert 0.0 <= rate < 1.0, "Tỷ lệ phải nằm trong khoảng [0, 1)"
         self.rate = rate
         self.seed = seed
-        self.training = True
+        # self.training = True
 
-    def forward(self, x: np.ndarray):
+    def forward(self, x: np.ndarray, training=True):
         """
         Lan truyền xuôi: Áp dụng dropout nếu đang ở chế độ huấn luyện.
 
@@ -35,11 +35,13 @@ class Dropout(Layer):
         np.ndarray
             Đầu ra sau khi đã áp dụng dropout (nếu training=True).
         """
-        if self.training:
+        # print(f"[Dropout] training={training}")
+        if training:
             np.random.seed(self.seed)
             self.mask = np.random.binomial(n=1, p=(1.0 - self.rate), size=x.shape)
             return x * self.mask
         else:
+            self.mask = None
             return x
 
     def backward(self, grad_output: np.ndarray):

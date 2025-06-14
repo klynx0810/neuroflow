@@ -1,3 +1,4 @@
+import numpy as np
 class Layer:
     def __init__(self, name=None, trainable=True) -> None:
         """
@@ -24,6 +25,13 @@ class Layer:
     def backward(self, grad_output):
         """Lan truyền gradient ngược lại"""
         raise NotImplementedError("Layer phải định nghĩa backward()")
+
+    def set_training(self, mode: bool):
+        self.training = mode
+    
+    def set_params(self, new_params: dict):
+        for k, v in new_params.items():
+            self.params[k] = v.astype(np.float32)
 
     def get_params(self):
         return self.params

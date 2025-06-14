@@ -20,8 +20,10 @@ class Dense(Layer):
         input_shape: tuple, thường là (batch_size, input_dim)
         """
         input_dim = self.input_dim or input_shape[-1]
-        self.params["W"] = np.random.randn(input_dim, self.units) * 0.01
-        self.params["b"] = np.zeros((self.units,))
+        # self.params["W"] = (np.random.randn(input_dim, self.units) * 0.01).astype(np.float32)
+        std = np.sqrt(2. / input_dim)
+        self.params["W"] = (np.random.randn(input_dim, self.units) * std).astype(np.float32)
+        self.params["b"] = np.zeros((self.units,), dtype=np.float32)
         self.built = True
 
     def forward(self, x: np.ndarray):
@@ -29,6 +31,7 @@ class Dense(Layer):
         x: đầu vào có shape (batch_size, input_dim)
         Trả về: output shape (batch_size, units)
         """
+        x = x.astype(np.float32)
         if not self.built:
             self.build(x.shape)
         self.last_input = x
@@ -39,7 +42,7 @@ class Dense(Layer):
         if self.activation:
             output = self.activation.forward(output)
 
-        return output
+        return output.astype(np.float32)
     
     def backward(self, grad_output: np.ndarray):
         """
@@ -47,18 +50,18 @@ class Dense(Layer):
         Trả về: grad_input (shape: [batch_size, input_dim])
         """
         if self.activation:
-            grad_output = self.activation.backward(grad_output=grad_output)
+            grad_output = self.activation.backward(grad_output=grad_output).astype(np.float32)
             
-        W = self.params["W"]
-        x = self.last_input
+        W = self.params["W"].astype(np.float32)
+        x = self.last_input.astype(np.float32)
 
         # Gradient w.r.t weights and bias
-        self.grads["W"] = x.T @ grad_output      # shape: (input_dim, units)
+        self.grads["W"] = (x.T @ grad_output).astype(np.float32)      # shape: (input_dim, units)
         self.grads["b"] = np.sum(grad_output, axis=0)  # shape: (units,)
 
         # Gradient w.r.t input (truyền cho layer trước đó)
         grad_input = grad_output @ W.T           # shape: (batch_size, input_dim)
-        return grad_input
+        return grad_input.astype(np.float32)
 
     def get_config(self):
         base_config: dict = super().get_config()

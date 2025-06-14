@@ -6,26 +6,24 @@ class Adam:
         self.beta1 = beta1
         self.beta2 = beta2
         self.eps = eps
-        self.m = {}     # moment bậc 1
-        self.v = {}     # moment bậc 2
-        self.t = 0      # timestep
+        self.m = {}  # moment 1
+        self.v = {}  # moment 2
+        self.t = 0   # timestep
 
     def step(self, params, grads):
         self.t += 1
 
         for key in params:
-            # Khởi tạo m và v nếu chưa có
-            if key not in self.m:
-                self.m[key] = np.zeros_like(grads[key])
-                self.v[key] = np.zeros_like(grads[key])
+            param_id = id(params[key])  # dùng id để phân biệt các layer có cùng key như "W"
 
-            # Cập nhật m và v
-            self.m[key] = self.beta1 * self.m[key] + (1 - self.beta1) * grads[key]
-            self.v[key] = self.beta2 * self.v[key] + (1 - self.beta2) * (grads[key] ** 2)
+            if param_id not in self.m:
+                self.m[param_id] = np.zeros_like(grads[key])
+                self.v[param_id] = np.zeros_like(grads[key])
 
-            # Bias correction
-            m_hat = self.m[key] / (1 - self.beta1 ** self.t)
-            v_hat = self.v[key] / (1 - self.beta2 ** self.t)
+            self.m[param_id] = self.beta1 * self.m[param_id] + (1 - self.beta1) * grads[key]
+            self.v[param_id] = self.beta2 * self.v[param_id] + (1 - self.beta2) * (grads[key] ** 2)
 
-            # Cập nhật tham số
+            m_hat = self.m[param_id] / (1 - self.beta1 ** self.t)
+            v_hat = self.v[param_id] / (1 - self.beta2 ** self.t)
+
             params[key] -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)

@@ -13,4 +13,9 @@ class Activation(Layer):
         return self.activation.backward(grad_output)
     
     def get_config(self):
-        return super().get_config()
+        base_config:dict = super().get_config()
+        base_config.update({
+            "activation": self.activation.name
+        })
+
+        return base_config

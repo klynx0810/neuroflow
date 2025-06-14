@@ -34,9 +34,12 @@ class Conv2D(Layer):
         self.batch_size, in_h, in_w, in_c = input_shape
         kh, kw = self.kernel_size
         # khởi tạo W: (filters, kh, kw, in_c), mỗi filter dùng cho mọi kênh
-        self.params["W"] = np.random.randn(self.filters, kh, kw, in_c) * 0.01
+        # self.params["W"] = (np.random.randn(self.filters, kh, kw, in_c) * 0.01).astype(np.float32)
+        fan_in = kh * kw * in_c
+        std = np.sqrt(2. / fan_in)
+        self.params["W"] = (np.random.randn(self.filters, kh, kw, in_c) * std).astype(np.float32)
         # self.params["W"] = np.ones((self.filters, kh, kw, in_c)) * 2
-        self.params["b"] = np.zeros((self.filters,))
+        self.params["b"] = np.zeros((self.filters,), dtype=np.float32)
         self.built = True
 
     def conv2d_single_channel(self, A, W, bias, stride, pad):
@@ -160,7 +163,7 @@ class Conv2D(Layer):
         OH = (H + 2 * padding - kh) // stride + 1
         OW = (W + 2 * padding - kw) // stride + 1
 
-        x_padded = np.pad(x, ((0, 0), (padding, padding), (padding, padding), (0, 0)))
+        x_padded = np.pad(x, ((0, 0), (padding, padding), (padding, padding), (0, 0))).astype(np.float32)
         
         shape = (B, OH, OW, kh, kw, C)
         strides = (
@@ -173,7 +176,7 @@ class Conv2D(Layer):
         )
         
         patches = np.lib.stride_tricks.as_strided(x_padded, shape=shape, strides=strides)
-        return patches.reshape(B * OH * OW, -1), OH, OW
+        return patches.reshape(B * OH * OW, -1).astype(np.float32), OH, OW
 
 
     def forward(self, x: np.ndarray):
@@ -182,6 +185,7 @@ class Conv2D(Layer):
         kernel: (F, kh, kw, C)
         return: (B, OH, OW, F)
         """
+        x = x.astype(np.float32)
         if not self.built:
             self.build(x.shape)
 
@@ -189,11 +193,11 @@ class Conv2D(Layer):
         
         F, kh, kw, C = self.params["W"].shape
         cols, OH, OW = self.im2col_optimized(x, kh, kw, self.stride, self.padding)     # (B*OH*OW, kh*kw*C)
-        W = self.params["W"].reshape(F, -1)                                  # (F, kh*kw*C)
+        W = self.params["W"].reshape(F, -1).astype(np.float32)                                  # (F, kh*kw*C)
         
         out: np.ndarray = cols @ W.T                                           # (B*OH*OW, F)
         B = x.shape[0]
-        out = out.reshape(B, OH, OW, F)
+        out = out.reshape(B, OH, OW, F).astype(np.float32)
 
         if self.activation:
             output = self.activation.forward(out)
@@ -235,7 +239,7 @@ class Conv2D(Layer):
         OW = (W + 2 * padding - kw) // stride + 1
         H_pad, W_pad = H + 2 * padding, W + 2 * padding
 
-        dX_col = dX_col.reshape(B, OH, OW, kh, kw, C)
+        dX_col = dX_col.reshape(B, OH, OW, kh, kw, C).astype(np.float32)
 
         dx_padded = np.zeros((B, H_pad, W_pad, C), dtype=dX_col.dtype)
 
@@ -263,31 +267,33 @@ class Conv2D(Layer):
         Trả về: dx: (B, H, W, C)
         """
         if self.activation:
-            grad_output = self.activation.backward(grad_output=grad_output)
+            grad_output = self.activation.backward(grad_output=grad_output).astype(np.float32)
             
+        self.last_input = self.last_input.astype(np.float32)
+
         B, H, W, C = self.last_input.shape
         F, kh, kw, _ = self.params["W"].shape
         _, H_out, W_out, _ = grad_output.shape
 
-        dL_dX = np.zeros_like(self.last_input)
-        dL_dW = np.zeros_like(self.params["W"])
+        dL_dX = np.zeros_like(self.last_input, dtype=np.float32)
+        dL_dW = np.zeros_like(self.params["W"], dtype=np.float32)
         # dL_db = np.zeros_like(self.params["b"])
 
         cols, OH, OW = self.im2col_optimized(self.last_input, kh, kw, self.stride, self.padding)  # (B*OH*OW, kh*kw*C)
-        grad_output_flat = grad_output.reshape(B * OH * OW, F)  # (B*OH*OW, F)
+        grad_output_flat = grad_output.reshape(B * OH * OW, F).astype(np.float32)  # (B*OH*OW, F)
 
-        dL_dW = grad_output_flat.T @ cols
-        dL_dW = dL_dW.reshape(F, kh, kw, C)
-        dL_db = np.sum(grad_output, axis=(0, 1, 2)) # (F,)
+        dL_dW = (grad_output_flat.T @ cols).astype(np.float32)
+        dL_dW = dL_dW.reshape(F, kh, kw, C).astype(np.float32)
+        dL_db = np.sum(grad_output, axis=(0, 1, 2)).astype(np.float32) # (F,)
 
-        W_flat = self.params["W"].reshape(F, -1)  # (F, kh*kw*C)
+        W_flat = self.params["W"].reshape(F, -1).astype(np.float32)  # (F, kh*kw*C)
         dL_dX_col = grad_output_flat @ W_flat   # (B*OH*OW, kh*kw*C)
         dL_dX = self.col2im_optimized(dL_dX_col, self.last_input.shape, kh, kw, self.stride, self.padding)  # (B, H, W, C)
 
         self.grads["W"] = dL_dW
         self.grads["b"] = dL_db
 
-        return dL_dX
+        return dL_dX.astype(np.float32)
     
     def get_config(self):
         base_config:dict = super().get_config()
