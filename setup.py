@@ -11,6 +11,10 @@ setup(
     package_dir={"neuroflow": "neuroflow"},
     install_requires=[
         "numpy>=1.20",
+        "tqdm",
+        "h5py",
+        "matplotlib",
+        "opencv-python",
     ],
     python_requires=">=3.7",
 )
