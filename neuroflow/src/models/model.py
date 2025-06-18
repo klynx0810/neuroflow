@@ -6,6 +6,7 @@ from tqdm import tqdm
 from tqdm import trange
 from ..saving import saving_api
 import matplotlib.pyplot as plt
+from ..utils.tools import train_test_split
 
 class Model(Layer):
     def __init__(self, name=None):
@@ -81,8 +82,30 @@ class Model(Layer):
 
     #         print(f"Epoch {epoch+1}/{epochs} - Loss: {loss:.4f}")
 
-    def fit(self, X, y, epochs=1, batch_size=32):
-        num_samples = X.shape[0]
+    def fit(self, X: np.ndarray, y, epochs=1, batch_size=32, validation_split = None):
+        if isinstance(validation_split, float):
+            X_train, X_val, y_train, y_val = train_test_split(
+            X, y,
+            test_size=validation_split,
+            seed=42,
+            shuffle=True
+            )
+        elif isinstance(validation_split, tuple):
+            X_train: np.ndarray
+            y_train: np.ndarray
+            X_train, y_train = X.astype(np.float32), y
+
+            X_val: np.ndarray
+            y_val: np.ndarray
+            X_val, y_val = validation_split
+            X_val = X_val.astype(np.float32)
+        else:
+            X_train: np.ndarray
+            y_train: np.ndarray
+            X_train, y_train = X.astype(np.float32), y
+            X_val, y_val = None, None
+
+        num_samples = X_train.shape[0]
         num_batches = int(np.ceil(num_samples / batch_size))
 
         # Khởi tạo log
@@ -98,8 +121,8 @@ class Model(Layer):
                 for i in t:
                     start = i * batch_size
                     end = min(start + batch_size, num_samples)
-                    X_batch = X[start:end]
-                    y_batch = y[start:end]
+                    X_batch = X_train[start:end]
+                    y_batch = y_train[start:end]
 
                     # Forward
                     y_pred = self.call(X_batch)
@@ -115,7 +138,7 @@ class Model(Layer):
                         t.set_postfix(loss=loss, **{metric: metric_value})
                     else:
                         t.set_postfix(loss=loss)
-
+                    
                     # Backward
                     grad_output = self.loss_fn.backward(y_batch, y_pred)
                     for layer in reversed(self.layers):
@@ -128,14 +151,36 @@ class Model(Layer):
                             self.optimizer.step(layer.params, layer.grads)
 
             avg_loss = epoch_loss / num_batches
-            self.history["loss"].append(avg_loss)
+            # self.history["loss"].append(avg_loss)
+            self.history.setdefault("loss", []).append(avg_loss)
 
+            # if self.metrics:
+            #     avg_metric = epoch_metric / num_batches
+            #     self.history[self.metrics.name].append(avg_metric)
+            #     print(f"Epoch {epoch+1} Completed - Avg Loss: {avg_loss:.4f} - Avg {metric}: {avg_metric:.4f}")
+            # else:
+            #     print(f"Epoch {epoch+1} Completed - Avg Loss: {avg_loss:.4f}")
+
+            metric_str = ""
             if self.metrics:
                 avg_metric = epoch_metric / num_batches
-                self.history[self.metrics.name].append(avg_metric)
-                print(f"Epoch {epoch+1} Completed - Avg Loss: {avg_loss:.4f} - Avg {metric}: {avg_metric:.4f}")
-            else:
-                print(f"Epoch {epoch+1} Completed - Avg Loss: {avg_loss:.4f}")
+                self.history.setdefault(self.metrics.name, []).append(avg_metric)
+                metric_str = f" - {self.metrics.name}: {avg_metric:.4f}"
+
+            val_str = ""
+            if X_val is not None:
+                y_val_pred = self.call(X_val)
+                val_loss = self.loss_fn(y_val, y_val_pred)
+                self.history.setdefault("val_loss", []).append(val_loss)
+                val_str += f" - val_loss: {val_loss:.4f}"
+
+                if self.metrics:
+                    val_metric = self.metrics(y_val, y_val_pred)
+                    self.history.setdefault(f"val_{self.metrics.name}", []).append(val_metric)
+                    val_str += f" - val_{self.metrics.name}: {val_metric:.4f}"
+
+            print(f"{num_batches}/{num_batches} [==============================]"
+                f" - loss: {avg_loss:.4f}{metric_str}{val_str}")
 
     def predict(self, X):
         return self.call(X, training=False)
